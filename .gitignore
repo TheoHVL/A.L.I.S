@@ -1,0 +1,11 @@
+.env
+data/*
+!data/.gitkeep
+.venv/
+__pycache__/
+.ruff_cache/
+.pytest_cache/
+node_modules/
+dist/
+token.json
+credentials.json
