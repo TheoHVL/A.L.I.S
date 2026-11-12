@@ -75,3 +75,14 @@ def test_content_exceeding_max_length_returns_422():
     too_long_content = "a" * 4001
     response = client.post("/chat", json={"content": too_long_content})
     assert response.status_code == 422
+
+def test_ollama_closed_returns_503 (monkeypatch):
+    def mock_call_ollama(messages):
+        raise ConnectionError()
+    monkeypatch.setattr("app.main.call_ollama", mock_call_ollama)
+    response = client.post("/chat", json={"content": "Premier message"})
+
+    assert response.status_code == 503
+    assert history==[]
+    expected = "Le modèle local est indisponible"
+    assert expected==response.json()["detail"]

@@ -1,5 +1,5 @@
 from typing import Literal
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
 from ollama import chat, ChatResponse
 
@@ -33,8 +33,11 @@ history: list[Message] = []
 def post_chat (request : UserMessageRequest):
     user_message = Message (role="user", content=request.content)
     temp_history = history + [user_message]
-
-    response_text = call_ollama (temp_history)
+    
+    try : 
+        response_text = call_ollama (temp_history)
+    except ConnectionError:
+        raise HTTPException(status_code=503, detail="Le modèle local est indisponible")
     assistant_message = Message (role="assistant", content=response_text)
     history.append (user_message)
     history.append (assistant_message)
