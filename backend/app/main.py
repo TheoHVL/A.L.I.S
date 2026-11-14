@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
 from ollama import chat, ChatResponse
 
+MAX_HISTORY_MESSAGES = 20
 app = FastAPI()
 
 class UserMessageRequest(BaseModel):
@@ -28,14 +29,20 @@ def call_ollama (history: list[Message]):
     print (response.prompt_eval_count, response.eval_count)
     return (response['message']['content'])
 
+
+def trim_history(messages, max_messages):
+    if max_messages <= 0:
+        return []
+    return messages[-max_messages:]
+
 history: list[Message] = []
 @app.post ("/chat", response_model=Message)
 def post_chat (request : UserMessageRequest):
     user_message = Message (role="user", content=request.content)
     temp_history = history + [user_message]
-    
-    try : 
-        response_text = call_ollama (temp_history)
+    trimmed_history=trim_history(temp_history,MAX_HISTORY_MESSAGES)
+    try :
+        response_text = call_ollama (trimmed_history)
     except ConnectionError:
         raise HTTPException(status_code=503, detail="Le modèle local est indisponible")
     assistant_message = Message (role="assistant", content=response_text)
