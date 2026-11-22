@@ -24,14 +24,39 @@ function App() {
     </div>
   ))
 
-  function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
-    e.preventDefault() // sinon le navigateur recharge la page et tout est perdu
+  async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
+    e.preventDefault()
     const trimmedMessage = draft.trim()
     if (trimmedMessage === "") {
       return
     }
-    setMessages([...messages, {role: "user", content: trimmedMessage}])
+
+    const userMessage: Message = { role: "user", content: trimmedMessage }
+    
+    setMessages((prev) => [...prev, userMessage])
     setDraft("")
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: trimmedMessage }), 
+      })
+
+      if (!response.ok) {
+        throw new Error(`Erreur serveur : ${response.status}`)
+      }
+
+      const assistantMessage: Message = await response.json()
+      setMessages((prev) => [...prev, assistantMessage])
+      
+    } catch (error) {
+      console.error("Erreur lors de l'envoi :", error)
+      setMessages((prev) => [
+        ...prev, 
+        { role: "assistant", content: "Désolé, une erreur est survenue." }
+      ])
+    }
   }
 
   return (
