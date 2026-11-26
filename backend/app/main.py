@@ -26,7 +26,6 @@ def call_ollama (history: list[Message]):
     options={'num_ctx': 8192},
     think = False,
 )
-    print (response.prompt_eval_count, response.eval_count)
     return (response['message']['content'])
 
 
