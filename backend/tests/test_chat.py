@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, history, trim_history, MAX_HISTORY_MESSAGES
+from app.main import MAX_HISTORY_MESSAGES, app, history, trim_history
 
 client = TestClient(app)
 
@@ -71,42 +71,51 @@ def test_empty_or_whitespace_content_returns_422(invalid_content):
     response = client.post("/chat", json={"content": invalid_content})
     assert response.status_code == 422
 
+
 def test_content_exceeding_max_length_returns_422():
     too_long_content = "a" * 4001
     response = client.post("/chat", json={"content": too_long_content})
     assert response.status_code == 422
 
-def test_ollama_closed_returns_503 (monkeypatch):
+
+def test_ollama_closed_returns_503(monkeypatch):
     def mock_call_ollama(messages):
         raise ConnectionError()
+
     monkeypatch.setattr("app.main.call_ollama", mock_call_ollama)
     response = client.post("/chat", json={"content": "Premier message"})
 
     assert response.status_code == 503
-    assert history==[]
+    assert history == []
     expected = "Le modèle local est indisponible"
-    assert expected==response.json()["detail"]
+    assert expected == response.json()["detail"]
+
 
 def test_trim_history():
-    liste_courte = ['a','b','c']
+    liste_courte = ["a", "b", "c"]
     liste_longue = [chr(i) for i in range(97, 123)]
 
-    assert trim_history(liste_courte,MAX_HISTORY_MESSAGES)==['a','b','c']
-    assert trim_history(liste_longue, MAX_HISTORY_MESSAGES)==[chr(i) for i in range(103, 123)]
-    assert trim_history(liste_courte, 0)==[]
+    assert trim_history(liste_courte, MAX_HISTORY_MESSAGES) == ["a", "b", "c"]
+    assert trim_history(liste_longue, MAX_HISTORY_MESSAGES) == [
+        chr(i) for i in range(103, 123)
+    ]
+    assert trim_history(liste_courte, 0) == []
+
 
 def test_chat_sends_at_most_max_history_messages(monkeypatch):
     received_calls = []
-    N=15
+    N = 15
+
     def mock_call_ollama(messages: list):
         received_calls.append(list(messages))
         return "Message ajouté"
+
     monkeypatch.setattr("app.main.call_ollama", mock_call_ollama)
 
-    for i in range (N):
+    for i in range(N):
         client.post("/chat", json={"content": f"Message {i}"})
         assert len(received_calls[i]) <= MAX_HISTORY_MESSAGES
     assert len(received_calls[-1]) == MAX_HISTORY_MESSAGES
     assert received_calls[-1][-1].role == "user"
-    assert received_calls[-1][-1].content == f"Message {N-1}"
-    assert len(history) == N*2
+    assert received_calls[-1][-1].content == f"Message {N - 1}"
+    assert len(history) == N * 2
